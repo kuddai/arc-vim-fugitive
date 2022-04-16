@@ -338,7 +338,7 @@ let s:worktree_for_dir = {}
 let s:dir_for_worktree = {}
 function! s:Tree(path) abort
   let dir = a:path
-  if dir =~# '/\.git$'
+  if dir =~# '/\.arc$'
     return len(dir) ==# 5 ? '/' : dir[0:-6]
   elseif dir ==# ''
     return ''
@@ -438,7 +438,7 @@ function! FugitiveExtractGitDir(path) abort
     elseif has_key(s:dir_for_worktree, root)
       return s:dir_for_worktree[root]
     endif
-    let dir = substitute(root, '[\/]$', '', '') . '/.git'
+    let dir = substitute(root, '[\/]$', '', '') . '/.arc'
     let type = getftype(dir)
     if type ==# 'dir' && FugitiveIsGitDir(dir)
       return dir
@@ -526,7 +526,7 @@ function! s:ProjectionistDetect() abort
     if exists('+shellslash') && !&shellslash
       let base = tr(base, '/', '\')
     endif
-    let file = FugitiveFind('.git/info/projections.json', dir)
+    let file = FugitiveFind('.arc/info/projections.json', dir)
     if filereadable(file)
       call projectionist#append(base, file)
     endif

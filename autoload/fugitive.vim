@@ -396,11 +396,11 @@ let s:run_jobs = (exists('*ch_close_in') || exists('*jobstart')) && exists('*buf
 
 function! s:GitCmd() abort
   if !exists('g:fugitive_git_executable')
-    return ['git']
+    return ['arc']
   elseif type(g:fugitive_git_executable) == type([])
     return g:fugitive_git_executable
   else
-    let dquote = '"\%([^"]\|""\|\\"\)*"\|'
+    let dquote =arc
     let string = g:fugitive_git_executable
     let list = []
     if string =~# '^\w\+='
@@ -421,7 +421,7 @@ endfunction
 
 function! s:GitShellCmd() abort
   if !exists('g:fugitive_git_executable')
-    return 'git'
+    return 'arc'
   elseif type(g:fugitive_git_executable) == type([])
     return s:shellesc(g:fugitive_git_executable)
   else
@@ -886,8 +886,56 @@ function! s:TreeChomp(...) abort
   throw 'fugitive: error running `' . call('fugitive#ShellCommand', a:000) . '`: ' . s:JoinChomp(r.stderr)
 endfunction
 
+
+" 'arc', '--git-dir=/home/kuddai/.arc/stores/_home_kuddai_cs_arcadia-2/.arc',
+" '-C', '/home/kuddai/.arc/stores/_home_kuddai_cs_arcadia-2',
+" '--literal-pathspecs',
+" '--no-literal-pathspecs',
+" '--no-pager',
+" '-c', 'blame.coloring=none', '-c', 'blame.blankBoundary=false',
+" 'blame',
+" '--show-number',
+" '--', '/home/kuddai/cs/arcadia-2/sdg/sdc/sdc_install/BUILD'
+function! s:SanitizeArcOptions(argv) abort
+  " return a:argv
+  let l:sanitized_args = []
+  let l:i = 0
+  let l:length = len(a:argv)
+  while l:i <# l:length
+    let l:arg = a:argv[i]
+    let l:i = l:i + 1
+    if l:arg =~# "--git-dir"
+      continue
+    elseif l:arg =~# "-C"
+      let l:i = l:i + 1
+      continue
+    elseif l:arg =~# "--literal-pathspecs"
+      continue
+    elseif l:arg =~# "--no-literal-pathspecs"
+      continue
+    elseif l:arg =~# "--no-pager"
+      continue
+    elseif l:arg =~# "-c"
+      let l:i = l:i + 1
+      continue
+    elseif l:arg =~# "--show-number"
+      continue
+    else
+      call add(l:sanitized_args, l:arg)
+    endif
+  endwhile
+  return l:sanitized_args
+endfunction
+
 function! s:StdoutToFile(out, cmd, ...) abort
-  let [argv, jopts, _] = fugitive#PrepareJob(a:cmd)
+  let [cargv, jopts, _] = fugitive#PrepareJob(a:cmd)
+  " debug
+  " echom 'kuddai stdouttofile'
+  " echom cargv
+  " echom jopts
+  let argv = s:SanitizeArcOptions(l:cargv)
+  " echom 'kuddai stdouttofile after'
+  " echom argv
   let exit = []
   if exists('*jobstart')
     call extend(jopts, {
@@ -6840,6 +6888,9 @@ function! s:BlameSubcommand(line1, count, range, bang, mods, options) abort
       call fugitive#Autowrite()
     endif
     let basecmd = [{'git': a:options.git, 'git_dir': dir}] + ['--literal-pathspecs'] + cmd + ['--'] + (len(files) ? files : [file])
+    " echom 'kuddai'
+    " echom basecmd
+    " echom temp
     let [err, exec_error] = s:StdoutToFile(temp, basecmd)
     if exists('delete_in')
       call delete(tempname . '.in')
@@ -6954,7 +7005,10 @@ function! s:BlameSubcommand(line1, count, range, bang, mods, options) abort
         if exists('+signcolumn')
           setlocal signcolumn=no
         endif
-        execute "vertical resize ".(s:linechars('.\{-\}\s\+\d\+\ze)')+1)
+        " TODO(kuddai) figure out how it used to work before automatically and make it auto again.
+        " For now choose blame split width (vertical resize command) to be fixed
+        " execute "vertical resize ".(s:linechars('.\{-\}\s\+\d\+\ze)')+1)
+        execute "vertical resize 65"
         redraw
         syncbind
         exe s:DoAutocmdChanged(temp_state)

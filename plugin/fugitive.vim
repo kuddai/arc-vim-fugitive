@@ -338,7 +338,7 @@ let s:worktree_for_dir = {}
 let s:dir_for_worktree = {}
 function! s:Tree(path) abort
   let dir = a:path
-  if dir =~# '/\.arc$'
+  if dir =~# '/\.git$' || dir =~# '/\.arc$'
     return len(dir) ==# 5 ? '/' : dir[0:-6]
   elseif dir ==# ''
     return ''
@@ -438,23 +438,26 @@ function! FugitiveExtractGitDir(path) abort
     elseif has_key(s:dir_for_worktree, root)
       return s:dir_for_worktree[root]
     endif
-    let dir = substitute(root, '[\/]$', '', '') . '/.arc'
-    let type = getftype(dir)
-    if type ==# 'dir' && FugitiveIsGitDir(dir)
-      return dir
-    elseif type ==# 'link' && FugitiveIsGitDir(dir)
-      return resolve(dir)
-    elseif type !=# ''
-      let line = get(s:ReadFile(dir, 1), 0, '')
-      let file_dir = s:Slash(FugitiveVimPath(matchstr(line, '^gitdir: \zs.*')))
-      if file_dir !~# '^/\|^\a:\|^$' && FugitiveIsGitDir(root . '/' . file_dir)
-        return simplify(root . '/' . file_dir)
-      elseif len(file_dir) && FugitiveIsGitDir(file_dir)
-        return file_dir
+    for dir_suffix in ['/.git', '/.arc']
+      " let dir = substitute(root, '[\/]$', '', '') . '/.git'
+      let dir = substitute(root, '[\/]$', '', '') . dir_suffix
+      let type = getftype(dir)
+      if type ==# 'dir' && FugitiveIsGitDir(dir)
+        return dir
+      elseif type ==# 'link' && FugitiveIsGitDir(dir)
+        return resolve(dir)
+      elseif type !=# ''
+        let line = get(s:ReadFile(dir, 1), 0, '')
+        let file_dir = s:Slash(FugitiveVimPath(matchstr(line, '^gitdir: \zs.*')))
+        if file_dir !~# '^/\|^\a:\|^$' && FugitiveIsGitDir(root . '/' . file_dir)
+          return simplify(root . '/' . file_dir)
+        elseif len(file_dir) && FugitiveIsGitDir(file_dir)
+          return file_dir
+        endif
+      elseif FugitiveIsGitDir(root)
+        return root
       endif
-    elseif FugitiveIsGitDir(root)
-      return root
-    endif
+    endfor
     let previous = root
     let root = fnamemodify(root, ':h')
   endwhile
@@ -526,7 +529,7 @@ function! s:ProjectionistDetect() abort
     if exists('+shellslash') && !&shellslash
       let base = tr(base, '/', '\')
     endif
-    let file = FugitiveFind('.arc/info/projections.json', dir)
+    let file = FugitiveFind('.git/info/projections.json', dir)
     if filereadable(file)
       call projectionist#append(base, file)
     endif

@@ -394,13 +394,22 @@ endfunction
 
 let s:run_jobs = (exists('*ch_close_in') || exists('*jobstart')) && exists('*bufwinid')
 
+function! s:GetRepoType()
+  let l:dir = len(s:GitDir()) ? s:GitDir() : FugitiveExtractGitDir(expand('%:p'))
+  if l:dir =~# '\.arc$'
+    return 'arc'
+  else
+    return 'git'
+  endif
+endfunction
+
 function! s:GitCmd() abort
   if !exists('g:fugitive_git_executable')
-    return ['arc']
+    return [s:GetRepoType()]
   elseif type(g:fugitive_git_executable) == type([])
     return g:fugitive_git_executable
   else
-    let dquote =arc
+    let dquote = '"\%([^"]\|""\|\\"\)*"\|'
     let string = g:fugitive_git_executable
     let list = []
     if string =~# '^\w\+='
@@ -421,7 +430,7 @@ endfunction
 
 function! s:GitShellCmd() abort
   if !exists('g:fugitive_git_executable')
-    return 'arc'
+    return s:GetRepoType()
   elseif type(g:fugitive_git_executable) == type([])
     return s:shellesc(g:fugitive_git_executable)
   else
@@ -7008,6 +7017,7 @@ function! s:BlameSubcommand(line1, count, range, bang, mods, options) abort
         " TODO(kuddai) figure out how it used to work before automatically and make it auto again.
         " For now choose blame split width (vertical resize command) to be fixed
         " execute "vertical resize ".(s:linechars('.\{-\}\s\+\d\+\ze)')+1)
+        " 65 pixels includes commit, author and date.
         execute "vertical resize 65"
         redraw
         syncbind
